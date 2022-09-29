@@ -4,7 +4,7 @@ from loguru import logger
 import os
 from os import listdir
 from os.path import isfile, join
-
+import math
 try:
  os.mkdir('Output')
 except Exception as e:
@@ -36,12 +36,29 @@ def makeWebmicon(f: str):
         b1 = os.getcwd()+'/'+f[:f.find('.')]
         b2 = os.getcwd()+'/'+f
         subprocess.call(f'ffmpeg -i {b2} -fs 32KB -c:v libvpx-vp9 -loglevel quiet -vf scale=100:100 {b1}.webm')
+def smallPicResize(image_pil):
+        salt=math.sqrt(512/(image_pil.height))
+        resize_w=int(image_pil.width*salt)
+        resize_h=int(image_pil.height*salt)
+        image_resize = image_pil.resize(
+            (resize_w, resize_h), Image.Resampling.LANCZOS)
+        background = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
+        offset = (round((512-resize_w)/2),
+                  round((512-resize_h)/2))
+        background.paste(image_resize, offset)
+        return background
 for file in onlyfiles:
     if file[file.find('.'):].lower() in ['.webp', '.png', '.jpg']:
         image = Image.open(os.getcwd()+'/Input/'+file, 'r')
-        resize(image, 512, 512).save(os.getcwd()+'/Output/' +
+        # special process for very small picture
+        if 40 < image.width < 200 or 200 > image.height > 40:
+            smallPicResize(image).save(os.getcwd()+'/Output/' +
                                     file[:file.find('.')]+'.png', quality=100)
-        logger.info(file)
+            logger.info('\033[92m[FOUND small pic]\033[39m'+file)
+        else:
+            resize(image, 512, 512).save(os.getcwd()+'/Output/' +
+                                    file[:file.find('.')]+'.png', quality=100)
+            logger.info(file)
     elif file[file.find('.'):].lower() == '.gif':
         image = Image.open(os.getcwd()+'/Input/'+file, 'r')
         b1 = os.getcwd()+'/Output/'+file[:file.find('.')]
